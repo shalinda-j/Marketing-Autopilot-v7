@@ -18,7 +18,7 @@ export const Header: React.FC = () => {
           rel="noopener noreferrer"
           className="text-sm text-gray-400 hover:text-white transition-colors"
         >
-          Powered by Google AI
+          
         </a>
       </div>
     </header>
