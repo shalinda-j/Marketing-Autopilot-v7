@@ -134,7 +134,7 @@ const parseDataUri = (dataUri: string): { mimeType: string; data: string } => {
     };
 };
 
-export const refineLogo = async (base64ImageDataUri: string, prompt: string): Promise<string> => {
+export const editImage = async (base64ImageDataUri: string, prompt: string): Promise<string> => {
     try {
         const { mimeType, data: base64ImageData } = parseDataUri(base64ImageDataUri);
 
@@ -159,7 +159,7 @@ export const refineLogo = async (base64ImageDataUri: string, prompt: string): Pr
         });
 
         if (!response?.candidates?.[0]?.content?.parts) {
-             throw new Error("The model returned an empty or invalid response for image refinement.");
+             throw new Error("The model returned an empty or invalid response for image editing.");
         }
 
         const imagePart = response.candidates[0].content.parts.find(part => part.inlineData);
@@ -167,9 +167,9 @@ export const refineLogo = async (base64ImageDataUri: string, prompt: string): Pr
         if (!imagePart || !imagePart.inlineData) {
             const textPart = response.candidates[0].content.parts.find(part => part.text);
             if (textPart && textPart.text) {
-                 throw new Error(`Image refinement failed. The model responded: "${textPart.text}"`);
+                 throw new Error(`Image editing failed. The model responded: "${textPart.text}"`);
             }
-            throw new Error("No image part found in the refinement response.");
+            throw new Error("No image part found in the editing response.");
         }
 
         const base64ImageBytes: string = imagePart.inlineData.data;
@@ -177,8 +177,8 @@ export const refineLogo = async (base64ImageDataUri: string, prompt: string): Pr
         return `data:${newMimeType};base64,${base64ImageBytes}`;
 
     } catch (error) {
-        console.error("Error refining logo:", error);
-        throw new Error(`Failed to refine logo with AI. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+        console.error("Error editing image:", error);
+        throw new Error(`Failed to edit image with AI. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
     }
 };
 
@@ -190,7 +190,7 @@ export const generateImageFromPrompt = async (prompt: string): Promise<string> =
             config: {
               numberOfImages: 1,
               outputMimeType: 'image/jpeg',
-              aspectRatio: '9:16', // Default for social media stories/reels
+              aspectRatio: '1:1',
             },
         });
         

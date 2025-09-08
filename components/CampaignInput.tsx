@@ -7,12 +7,11 @@ interface CampaignInputProps {
   onGenerateLogo: (brief: string) => void;
   isLoading: boolean;
   isLogoLoading: boolean;
-  isRefiningLogo: boolean;
 }
 
 const exampleBrief = 'Coca-Cola | Coke Zero Sugar | “Summer Vibes, Zero Limits” | Gen-Z festival goers 18-24 | Engagement rate | enterprise | 2025-06-01 | 2025-08-31 | playful, emoji-heavy, inclusive | #ZeroLimitsSummer | coke_zero_summer_25 | 3/wk IG-TK, 2/wk YT-SC, 1/wk TW-LI';
 
-export const CampaignInput: React.FC<CampaignInputProps> = ({ onGenerate, onGenerateLogo, isLoading, isLogoLoading, isRefiningLogo }) => {
+export const CampaignInput: React.FC<CampaignInputProps> = ({ onGenerate, onGenerateLogo, isLoading, isLogoLoading }) => {
   const [brief, setBrief] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,11 +31,11 @@ export const CampaignInput: React.FC<CampaignInputProps> = ({ onGenerate, onGene
     }
   };
 
-  const isAnyLoading = isLoading || isLogoLoading || isRefiningLogo;
+  const isAnyLoading = isLoading || isLogoLoading;
   const isBriefEmpty = !brief.trim();
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 h-full flex flex-col shadow-lg">
+    <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 flex flex-col shadow-lg">
       <h2 className="text-xl font-bold text-white mb-4">1. Campaign Brief</h2>
       <p className="text-sm text-gray-400 mb-4">
         Enter your campaign details as a single line, separated by <code className="bg-gray-900 px-1 py-0.5 rounded-md text-gray-300">|</code>. The AI will generate a complete omni-channel plan.

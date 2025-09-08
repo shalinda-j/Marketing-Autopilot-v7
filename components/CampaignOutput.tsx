@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { CampaignPlan, ContentSlot } from '../types';
-import { MegaphoneIcon, CalendarIcon, FilmIcon, CodeBracketIcon, PhotographIcon, PaintBrushIcon, SparklesIcon } from './icons';
+import { MegaphoneIcon, CalendarIcon, FilmIcon, CodeBracketIcon, PhotographIcon, PaintBrushIcon } from './icons';
 import { Spinner } from './Spinner';
+import { ImageStudioTool } from './ImageStudioTool';
 
 interface CampaignOutputProps {
   plan: CampaignPlan | null;
@@ -9,9 +10,6 @@ interface CampaignOutputProps {
   logoUrl: string | null;
   isLogoLoading: boolean;
   logoError: string | null;
-  onRefineLogo: (prompt: string) => void;
-  isRefiningLogo: boolean;
-  refineLogoError: string | null;
   generatedMedia: Record<string, { url: string; status: 'complete' }>;
   mediaGenerationStatus: Record<string, { status: 'loading' | 'error' | 'complete'; message: string }>;
 }
@@ -116,43 +114,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, mediaUrl, status }) => (
     </div>
 );
 
-const LogoRefineForm: React.FC<{ onRefine: (prompt: string) => void; isLoading: boolean; }> = ({ onRefine, isLoading }) => {
-    const [prompt, setPrompt] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (prompt.trim()) {
-            onRefine(prompt);
-        }
-    };
-    
-    return (
-        <form onSubmit={handleSubmit} className="mt-4 space-y-2 max-w-md">
-            <label htmlFor="refine-prompt" className="block text-sm font-medium text-gray-300 flex items-center">
-                <SparklesIcon className="w-4 h-4 mr-1.5 text-yellow-400" /> Refine with AI (Nano Banana)
-            </label>
-            <div className="flex space-x-2">
-                <input
-                    id="refine-prompt"
-                    type="text"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="e.g., make it more futuristic..."
-                    className="flex-grow bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-brand-secondary focus:border-brand-secondary transition placeholder-gray-500"
-                    disabled={isLoading}
-                />
-                <button
-                    type="submit"
-                    disabled={isLoading || !prompt.trim()}
-                    className="flex items-center justify-center bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                >
-                    {isLoading ? <Spinner /> : 'Refine'}
-                </button>
-            </div>
-        </form>
-    );
-};
-
 const mediaToolInfo: { [key: string]: { icon: React.ReactNode; name: string; description: string; color: string; } } = {
   'imagen3': { icon: <PhotographIcon className="w-6 h-6" />, name: 'Imagen 4', description: 'Generate Image', color: 'pink-400' },
   'imagen-4.0-generate-001': { icon: <PhotographIcon className="w-6 h-6" />, name: 'Imagen 4', description: 'Generate Image', color: 'pink-400' },
@@ -163,7 +124,7 @@ const mediaToolInfo: { [key: string]: { icon: React.ReactNode; name: string; des
 };
 
 
-export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading, logoUrl, isLogoLoading, logoError, onRefineLogo, isRefiningLogo, refineLogoError, generatedMedia, mediaGenerationStatus }) => {
+export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading, logoUrl, isLogoLoading, logoError, generatedMedia, mediaGenerationStatus }) => {
   const [activeTab, setActiveTab] = useState(0);
 
   if (isLoading) {
@@ -192,20 +153,8 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
         <div className="animate-fade-in">
             <div className="relative bg-white p-2 rounded-lg inline-block shadow-lg">
               <img src={logoUrl} alt="Generated brand logo" className="w-40 h-40 object-contain rounded-md" />
-              {isRefiningLogo && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-lg">
-                    <Spinner />
-                  </div>
-              )}
             </div>
-            <LogoRefineForm onRefine={onRefineLogo} isLoading={isRefiningLogo} />
         </div>
-      )}
-       {refineLogoError && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg max-w-md mt-4" role="alert">
-            <p className="font-bold">Logo Refinement Failed</p>
-            <p className="text-sm">{refineLogoError}</p>
-          </div>
       )}
     </div>
   );
@@ -214,7 +163,7 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
   if (!plan) {
     return (
       <div className="flex flex-col items-start justify-start h-full bg-gray-800/30 border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center min-h-[70vh]">
-        {(isLogoLoading || logoUrl || logoError || isRefiningLogo || refineLogoError) ? (
+        {(isLogoLoading || logoUrl || logoError) ? (
           <div className="w-full text-left">
             <LogoDisplay />
           </div>
@@ -233,8 +182,11 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
     { label: 'Overview', icon: <MegaphoneIcon className="w-5 h-5" /> },
     { label: 'Content Calendar', icon: <CalendarIcon className="w-5 h-5" /> },
     { label: 'Media Plan', icon: <FilmIcon className="w-5 h-5" /> },
+    { label: 'Image Studio', icon: <PaintBrushIcon className="w-5 h-5" /> },
     { label: 'Raw JSON', icon: <CodeBracketIcon className="w-5 h-5" /> },
   ];
+
+  const defaultImagePrompt = plan?.content_calendar?.[0]?.visual_prompt || '';
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-lg min-h-[70vh]">
@@ -242,7 +194,7 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
       <div className="pt-6">
         {activeTab === 0 && (
             <div className="space-y-4 animate-fade-in">
-                {(isLogoLoading || logoUrl || logoError || isRefiningLogo || refineLogoError) && <LogoDisplay />}
+                {(isLogoLoading || logoUrl || logoError) && <LogoDisplay />}
                 
                 <h2 className="text-3xl font-bold text-white">{plan.campaign_id}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -318,6 +270,9 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
             </div>
         )}
         {activeTab === 3 && (
+            <ImageStudioTool defaultPrompt={defaultImagePrompt} />
+        )}
+        {activeTab === 4 && (
             <pre className="bg-gray-900 p-4 rounded-lg text-xs text-gray-300 overflow-x-auto max-h-[60vh]">
                 <code>{JSON.stringify(plan, null, 2)}</code>
             </pre>

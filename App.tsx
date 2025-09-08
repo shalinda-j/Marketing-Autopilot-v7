@@ -3,7 +3,7 @@ import { Header } from './components/Header';
 import { CampaignInput } from './components/CampaignInput';
 import { CampaignOutput } from './components/CampaignOutput';
 import { CampaignPlan } from './types';
-import { generateCampaignPlan, generateLogo, refineLogo, generateImageFromPrompt, generateVideoFromStoryboard } from './services/geminiService';
+import { generateCampaignPlan, generateLogo, generateImageFromPrompt, generateVideoFromStoryboard } from './services/geminiService';
 
 const App: React.FC = () => {
   const [campaignPlan, setCampaignPlan] = useState<CampaignPlan | null>(null);
@@ -13,9 +13,6 @@ const App: React.FC = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLogoLoading, setIsLogoLoading] = useState<boolean>(false);
   const [logoError, setLogoError] = useState<string | null>(null);
-
-  const [isRefiningLogo, setIsRefiningLogo] = useState<boolean>(false);
-  const [refineLogoError, setRefineLogoError] = useState<string | null>(null);
 
   // State for generated media from the campaign plan
   const [generatedMedia, setGeneratedMedia] = useState<Record<string, { url: string; status: 'complete' }>>({});
@@ -28,7 +25,6 @@ const App: React.FC = () => {
     setLoading(true);
     setLogoUrl(null);
     setLogoError(null);
-    setRefineLogoError(null);
     setGeneratedMedia({});
     setMediaGenerationStatus({});
 
@@ -103,7 +99,6 @@ const App: React.FC = () => {
     const theme = parts[2];
 
     setLogoError(null);
-    setRefineLogoError(null);
     setLogoUrl(null);
     setIsLogoLoading(true);
 
@@ -119,33 +114,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleRefineLogo = useCallback(async (prompt: string) => {
-    if (!logoUrl) {
-      setRefineLogoError("No logo to refine. Please generate a logo first.");
-      return;
-    }
-    if (!prompt.trim()) {
-        setRefineLogoError("Please enter a refinement prompt.");
-        return;
-    }
-    
-    setRefineLogoError(null);
-    setIsRefiningLogo(true);
-    setLogoError(null);
-
-    try {
-      const newLogoUrl = await refineLogo(logoUrl, prompt);
-      setLogoUrl(newLogoUrl);
-    } catch (err) {
-      console.error(err);
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      setRefineLogoError(`Failed to refine logo. ${errorMessage}`);
-    } finally {
-      setIsRefiningLogo(false);
-    }
-  }, [logoUrl]);
-
-
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 font-sans">
       <Header />
@@ -157,7 +125,6 @@ const App: React.FC = () => {
               onGenerateLogo={handleGenerateLogo}
               isLoading={loading}
               isLogoLoading={isLogoLoading}
-              isRefiningLogo={isRefiningLogo}
             />
           </div>
           <div className="lg:col-span-8">
@@ -168,9 +135,6 @@ const App: React.FC = () => {
               logoUrl={logoUrl}
               isLogoLoading={isLogoLoading}
               logoError={logoError}
-              onRefineLogo={handleRefineLogo}
-              isRefiningLogo={isRefiningLogo}
-              refineLogoError={refineLogoError}
               generatedMedia={generatedMedia}
               mediaGenerationStatus={mediaGenerationStatus}
             />
