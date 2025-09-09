@@ -1,14 +1,16 @@
+
 import React, { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { CampaignInput } from './components/CampaignInput';
 import { CampaignOutput } from './components/CampaignOutput';
 import { CampaignPlan } from './types';
-import { generateCampaignPlan, generateImageFromPrompt, generateVideoFromStoryboard } from './services/geminiService';
+import { generateCampaignPlan, generateImageFromPrompt, generateVideoFromStoryboard, generateBriefFromUrl } from './services/geminiService';
 import { EpisodicVideoStudio } from './components/EpisodicVideoStudio';
 
 const App: React.FC = () => {
   const [campaignPlan, setCampaignPlan] = useState<CampaignPlan | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'campaign' | 'episodic'>('campaign');
 
@@ -19,7 +21,6 @@ const App: React.FC = () => {
   const handleGenerateCampaign = useCallback(async (brief: string) => {
     setError(null);
     setCampaignPlan(null);
-    setLoading(true);
     setGeneratedMedia({});
     setMediaGenerationStatus({});
     setView('campaign'); // Ensure we are on the campaign view
@@ -33,8 +34,34 @@ const App: React.FC = () => {
       setError(`Failed to generate campaign plan. ${errorMessage} Please check the brief format and your API key.`);
     } finally {
       setLoading(false);
+      setLoadingMessage('');
     }
   }, []);
+  
+  const handleGenerateFromBrief = useCallback(async (brief: string) => {
+    setLoadingMessage('Generating campaign from brief...');
+    setLoading(true);
+    await handleGenerateCampaign(brief);
+  }, [handleGenerateCampaign]);
+
+  const handleGenerateFromUrl = useCallback(async (url: string) => {
+    setLoadingMessage('Analyzing website...');
+    setLoading(true);
+    setError(null);
+    setCampaignPlan(null);
+
+    try {
+      const brief = await generateBriefFromUrl(url);
+      setLoadingMessage('Brief created! Generating campaign...');
+      await handleGenerateCampaign(brief);
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setError(`Failed to generate campaign from URL. ${errorMessage}`);
+      setLoading(false);
+      setLoadingMessage('');
+    }
+  }, [handleGenerateCampaign]);
 
   const handleOpenEpisodicStudio = useCallback(() => {
     setView('episodic');
@@ -92,9 +119,11 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-screen-2xl mx-auto">
           <div className="lg:col-span-4">
             <CampaignInput 
-              onGenerate={handleGenerateCampaign}
+              onGenerateFromBrief={handleGenerateFromBrief}
+              onGenerateFromUrl={handleGenerateFromUrl}
               onOpenEpisodicStudio={handleOpenEpisodicStudio}
               isLoading={loading}
+              loadingMessage={loadingMessage}
               isStudioActive={view === 'episodic'}
             />
           </div>

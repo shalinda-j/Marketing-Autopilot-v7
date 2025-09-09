@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { CampaignPlan } from '../types';
 
@@ -512,5 +513,41 @@ export const generateEpisodicVideo = async (prompt: string, onProgress?: (messag
     } catch (error) {
         console.error("Error generating episodic video:", error);
         throw new Error(`Failed to generate the episode video. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+    }
+};
+
+export const generateBriefFromUrl = async (url: string): Promise<string> => {
+    try {
+        const systemInstruction = `You are a marketing analyst. Based on the following website URL, create a one-line campaign brief.
+You must strictly follow this format:
+BRAND | PRODUCT | CAMPAIGN THEME | TARGET PERSONA | PRIMARY KPI | BUDGET TIER (micro/smb/enterprise) | START DATE (next month) | END DATE (3 months from start) | BRAND TOV (emoji allowed) | HASHTAG SEED | UTM_CAMPAIGN | OPTIMAL POST COUNT PER CHANNEL
+
+Make educated guesses for all fields based on the URL's likely content. The output must be a single line. Do not include any other text, explanation, or markdown.
+
+EXAMPLE OUTPUT for url 'https://www.allbirds.com/products/mens-tree-runners':
+Allbirds | Tree Runners | "Light on Your Feet, Light on the Planet" | Eco-conscious millennials 25-40 | Conversion rate | smb | 2025-07-01 | 2025-09-30 | sustainable, comfortable, minimalist | #LiveLightly | allbirds_tree_runners_q3 | 4/wk IG, 2/wk FB, 1/wk Pinterest
+`;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate the brief for this URL: ${url}`,
+            config: {
+                systemInstruction,
+            }
+        });
+
+        const text = response.text;
+        if (!text) {
+            const blockReason = response.promptFeedback?.blockReason;
+            if (blockReason) {
+                throw new Error(`Request was blocked due to ${blockReason}. Please try a different URL.`);
+            }
+            throw new Error("The model returned an empty or invalid response for the URL.");
+        }
+        return text.trim();
+
+    } catch (error) {
+        console.error("Error generating brief from URL:", error);
+        throw new Error(`Failed to generate brief from URL. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
     }
 };
