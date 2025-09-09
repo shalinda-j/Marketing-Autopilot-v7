@@ -399,3 +399,45 @@ export const generateMarketingImagePrompt = async (
         throw new Error(`Failed to generate prompt. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
     }
 };
+
+export const generateMarketingVideoScript = async (
+    productImageUri: string,
+    characterImageUri: string
+): Promise<string> => {
+    try {
+        const { mimeType: productMime, data: productData } = parseDataUri(productImageUri);
+        const { mimeType: characterMime, data: characterData } = parseDataUri(characterImageUri);
+
+        const systemPrompt = `You are an expert creative director for an advertising agency. Your task is to analyze two images—one of a product and one of a character/model—and generate a short, compelling video script prompt for an AI video generator (like Veo).
+
+        The generated script should:
+        1.  Be a single, concise paragraph.
+        2.  Describe a short (5-10 second) scene that is dynamic and visually interesting.
+        3.  Clearly feature both the product and the character.
+        4.  Suggest an action, a mood, and a setting.
+        5.  Include a brief voiceover line that is catchy and memorable.
+        6.  Do not use markdown or scene numbers like "Scene 1:". Just describe the video flow.
+
+        Analyze the provided images and generate the video script prompt.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    { text: systemPrompt },
+                    { inlineData: { mimeType: productMime, data: productData } },
+                    { inlineData: { mimeType: characterMime, data: characterData } },
+                ],
+            }
+        });
+
+        const text = response.text;
+        if (!text) {
+            throw new Error("The model returned no video script.");
+        }
+        return text.trim();
+    } catch (error) {
+        console.error("Error generating marketing video script:", error);
+        throw new Error(`Failed to generate video script. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+    }
+};

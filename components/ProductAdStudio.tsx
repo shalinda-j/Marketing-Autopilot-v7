@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { generateProductVideo, generateProductImage, generateMarketingImagePrompt } from '../services/geminiService';
+import { generateProductVideo, generateProductImage, generateMarketingImagePrompt, generateMarketingVideoScript } from '../services/geminiService';
 import { CubeTransparentIcon, UsersIcon, FilmIcon, PhotographIcon, UploadIcon, DownloadIcon } from './icons';
 import { Spinner } from './Spinner';
 
@@ -59,6 +59,8 @@ export const ProductAdStudio: React.FC = () => {
     const [videoError, setVideoError] = useState<string | null>(null);
     const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
     const [videoProgress, setVideoProgress] = useState<string>('');
+    const [isScriptLoading, setIsScriptLoading] = useState<boolean>(false);
+    const [scriptError, setScriptError] = useState<string | null>(null);
 
     const [imagePrompt, setImagePrompt] = useState<string>('');
     const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
@@ -69,20 +71,32 @@ export const ProductAdStudio: React.FC = () => {
 
     useEffect(() => {
         if (productImage && characterImage) {
-            const autoFillPrompt = async () => {
+            const autoFillAllPrompts = async () => {
                 setIsPromptLoading(true);
+                setIsScriptLoading(true);
                 setPromptError(null);
+                setScriptError(null);
                 setImagePrompt('');
+                setVideoScript('');
+
                 try {
-                    const prompt = await generateMarketingImagePrompt(productImage, characterImage);
-                    setImagePrompt(prompt);
+                    const [imagePromptResult, videoScriptResult] = await Promise.all([
+                        generateMarketingImagePrompt(productImage, characterImage),
+                        generateMarketingVideoScript(productImage, characterImage)
+                    ]);
+                    setImagePrompt(imagePromptResult);
+                    setVideoScript(videoScriptResult);
                 } catch (err) {
-                    setPromptError(err instanceof Error ? err.message : 'Failed to generate prompt.');
+                    const errorMessage = err instanceof Error ? err.message : 'Failed to generate prompts.';
+                    console.error(err);
+                    setPromptError(errorMessage);
+                    setScriptError(errorMessage);
                 } finally {
                     setIsPromptLoading(false);
+                    setIsScriptLoading(false);
                 }
             };
-            autoFillPrompt();
+            autoFillAllPrompts();
         }
     }, [productImage, characterImage]);
 
@@ -135,16 +149,20 @@ export const ProductAdStudio: React.FC = () => {
                 </div>
 
                 <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center"><FilmIcon className="w-6 h-6 mr-2 text-purple-400"/> 2. Generate Video Ad (Veo)</h3>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-bold text-white flex items-center"><FilmIcon className="w-6 h-6 mr-2 text-purple-400"/> 2. Generate Video Ad (Veo)</h3>
+                        {isScriptLoading && <span className="text-sm text-gray-400 flex items-center"><Spinner /> Auto-filling...</span>}
+                    </div>
                     <textarea
                         value={videoScript}
                         onChange={(e) => setVideoScript(e.target.value)}
                         rows={4}
-                        placeholder="Enter a script or prompt for your video ad... e.g., 'A short, exciting ad showing someone enjoying this product outdoors.'"
+                        placeholder={!canGenerate ? "Upload a product and character image to auto-generate a script." : "Auto-generating script..."}
                         className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white disabled:opacity-50"
-                        disabled={!canGenerate}
+                        disabled={!canGenerate || isScriptLoading}
                     />
-                    <button onClick={handleGenerateVideo} disabled={!canGenerate || isVideoLoading || !videoScript.trim()} className="w-full mt-3 flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg disabled:opacity-50">
+                    {scriptError && <p className="text-red-400 text-sm mt-2">{scriptError}</p>}
+                    <button onClick={handleGenerateVideo} disabled={!canGenerate || isVideoLoading || !videoScript.trim() || isScriptLoading} className="w-full mt-3 flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg disabled:opacity-50">
                         {isVideoLoading ? <><Spinner /> Generating Video...</> : 'Generate Video'}
                     </button>
                 </div>
