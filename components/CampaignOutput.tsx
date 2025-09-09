@@ -7,9 +7,6 @@ import { ProductAdStudio } from './ProductAdStudio';
 interface CampaignOutputProps {
   plan: CampaignPlan | null;
   isLoading: boolean;
-  logoUrl: string | null;
-  isLogoLoading: boolean;
-  logoError: string | null;
   generatedMedia: Record<string, { url: string; status: 'complete' }>;
   mediaGenerationStatus: Record<string, { status: 'loading' | 'error' | 'complete'; message: string }>;
   onGenerateMediaForSlot: (slotId: string) => void;
@@ -185,7 +182,7 @@ const MediaGenerationCard: React.FC<MediaGenerationCardProps> = ({ slot, mediaUr
 };
 
 
-export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading, logoUrl, isLogoLoading, logoError, generatedMedia, mediaGenerationStatus, onGenerateMediaForSlot }) => {
+export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading, generatedMedia, mediaGenerationStatus, onGenerateMediaForSlot }) => {
   const [activeTab, setActiveTab] = useState(0);
 
   if (isLoading) {
@@ -195,46 +192,15 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
       </div>
     );
   }
-
-  const LogoDisplay = () => (
-    <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-2 text-white">Generated Brand Logo</h3>
-      {isLogoLoading && (
-         <div className="relative w-40 h-40 bg-gray-800 rounded-lg overflow-hidden">
-            <ShimmerEffect />
-         </div>
-      )}
-      {logoError && !isLogoLoading && (
-        <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg max-w-md" role="alert">
-          <p className="font-bold">Logo Generation Failed</p>
-          <p className="text-sm">{logoError}</p>
-        </div>
-      )}
-      {logoUrl && !isLogoLoading && (
-        <div className="animate-fade-in">
-            <div className="relative bg-white p-2 rounded-lg inline-block shadow-lg">
-              <img src={logoUrl} alt="Generated brand logo" className="w-40 h-40 object-contain rounded-md" />
-            </div>
-        </div>
-      )}
-    </div>
-  );
-
-
+  
   if (!plan) {
     return (
-      <div className="flex flex-col items-start justify-start h-full bg-gray-800/30 border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center min-h-[70vh]">
-        {(isLogoLoading || logoUrl || logoError) ? (
-          <div className="w-full text-left">
-            <LogoDisplay />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center w-full h-full">
+      <div className="flex flex-col items-center justify-center h-full bg-gray-800/30 border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center min-h-[70vh]">
+        <div className="flex flex-col items-center justify-center w-full h-full">
             <div className="text-5xl mb-4 text-gray-600">🚀</div>
             <h2 className="text-2xl font-bold text-white">2. Campaign Plan</h2>
             <p className="text-gray-400 mt-2">Your generated campaign strategy will appear here.</p>
-          </div>
-        )}
+        </div>
       </div>
     );
   }
@@ -253,8 +219,6 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
       <div className="pt-6">
         {activeTab === 0 && (
             <div className="space-y-4 animate-fade-in">
-                {(isLogoLoading || logoUrl || logoError) && <LogoDisplay />}
-                
                 <h2 className="text-3xl font-bold text-white">{plan.campaign_id}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-gray-800/50 p-4 rounded-lg"><strong className="block text-gray-400">Brand</strong>{plan.brand}</div>

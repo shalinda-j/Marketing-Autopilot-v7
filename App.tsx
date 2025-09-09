@@ -3,16 +3,14 @@ import { Header } from './components/Header';
 import { CampaignInput } from './components/CampaignInput';
 import { CampaignOutput } from './components/CampaignOutput';
 import { CampaignPlan } from './types';
-import { generateCampaignPlan, generateLogo, generateImageFromPrompt, generateVideoFromStoryboard } from './services/geminiService';
+import { generateCampaignPlan, generateImageFromPrompt, generateVideoFromStoryboard } from './services/geminiService';
+import { EpisodicVideoStudio } from './components/EpisodicVideoStudio';
 
 const App: React.FC = () => {
   const [campaignPlan, setCampaignPlan] = useState<CampaignPlan | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [isLogoLoading, setIsLogoLoading] = useState<boolean>(false);
-  const [logoError, setLogoError] = useState<string | null>(null);
+  const [view, setView] = useState<'campaign' | 'episodic'>('campaign');
 
   const [generatedMedia, setGeneratedMedia] = useState<Record<string, { url: string; status: 'complete' }>>({});
   const [mediaGenerationStatus, setMediaGenerationStatus] = useState<Record<string, { status: 'loading' | 'error' | 'complete'; message: string }>>({});
@@ -22,10 +20,9 @@ const App: React.FC = () => {
     setError(null);
     setCampaignPlan(null);
     setLoading(true);
-    setLogoUrl(null);
-    setLogoError(null);
     setGeneratedMedia({});
     setMediaGenerationStatus({});
+    setView('campaign'); // Ensure we are on the campaign view
 
     try {
       const plan = await generateCampaignPlan(brief);
@@ -39,33 +36,11 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleGenerateLogo = useCallback(async (brief: string) => {
-    if (!brief.trim()) {
-      setLogoError("Please enter a campaign brief first to generate a logo.");
-      return;
-    }
-    const parts = brief.split('|').map(p => p.trim());
-    if (parts.length < 3 || !parts[0] || !parts[2]) {
-      setLogoError("Brief is too short. Please provide at least a Brand and Campaign Theme to generate a logo.");
-      return;
-    }
-    const brand = parts[0];
-    const theme = parts[2];
-
-    setLogoError(null);
-    setLogoUrl(null);
-    setIsLogoLoading(true);
-
-    try {
-      const imageUrl = await generateLogo(brand, theme);
-      setLogoUrl(imageUrl);
-    } catch (err) {
-      console.error(err);
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      setLogoError(`Failed to generate logo. ${errorMessage}`);
-    } finally {
-      setIsLogoLoading(false);
-    }
+  const handleOpenEpisodicStudio = useCallback(() => {
+    setView('episodic');
+    // Clear campaign-specific state if needed
+    setCampaignPlan(null);
+    setError(null);
   }, []);
 
   const handleGenerateMediaForSlot = useCallback(async (slotId: string) => {
@@ -118,23 +93,26 @@ const App: React.FC = () => {
           <div className="lg:col-span-4">
             <CampaignInput 
               onGenerate={handleGenerateCampaign}
-              onGenerateLogo={handleGenerateLogo}
+              onOpenEpisodicStudio={handleOpenEpisodicStudio}
               isLoading={loading}
-              isLogoLoading={isLogoLoading}
+              isStudioActive={view === 'episodic'}
             />
           </div>
           <div className="lg:col-span-8">
             {error && <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-6 animate-fade-in" role="alert">{error}</div>}
-            <CampaignOutput 
-              plan={campaignPlan} 
-              isLoading={loading} 
-              logoUrl={logoUrl}
-              isLogoLoading={isLogoLoading}
-              logoError={logoError}
-              generatedMedia={generatedMedia}
-              mediaGenerationStatus={mediaGenerationStatus}
-              onGenerateMediaForSlot={handleGenerateMediaForSlot}
-            />
+            
+            {view === 'campaign' && (
+              <CampaignOutput 
+                plan={campaignPlan} 
+                isLoading={loading}
+                generatedMedia={generatedMedia}
+                mediaGenerationStatus={mediaGenerationStatus}
+                onGenerateMediaForSlot={handleGenerateMediaForSlot}
+              />
+            )}
+            
+            {view === 'episodic' && <EpisodicVideoStudio />}
+
           </div>
         </div>
       </main>
