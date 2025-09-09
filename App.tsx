@@ -14,7 +14,6 @@ const App: React.FC = () => {
   const [isLogoLoading, setIsLogoLoading] = useState<boolean>(false);
   const [logoError, setLogoError] = useState<string | null>(null);
 
-  // State for generated media from the campaign plan
   const [generatedMedia, setGeneratedMedia] = useState<Record<string, { url: string; status: 'complete' }>>({});
   const [mediaGenerationStatus, setMediaGenerationStatus] = useState<Record<string, { status: 'loading' | 'error' | 'complete'; message: string }>>({});
 
@@ -31,56 +30,11 @@ const App: React.FC = () => {
     try {
       const plan = await generateCampaignPlan(brief);
       setCampaignPlan(plan);
-      setLoading(false); // Plan is loaded, now start media generation
-
-      if (plan && plan.media_generation_order) {
-        // Find the first content slot that needs an image
-        const imageSlot = plan.content_calendar.find(slot => slot.visual_prompt);
-        // Find the first content slot that needs a video
-        const videoSlot = plan.content_calendar.find(slot => slot.video_storyboard && slot.video_storyboard.length > 0);
-
-        const hasImageStep = plan.media_generation_order.some(step => step.tool.startsWith('imagen'));
-        const hasVideoStep = plan.media_generation_order.some(step => step.tool.startsWith('veo'));
-
-        // Generate the first image
-        if (hasImageStep && imageSlot) {
-            const slotId = imageSlot.slot_id;
-            setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'loading', message: 'Generating image with Imagen 4...' } }));
-            
-            generateImageFromPrompt(imageSlot.visual_prompt)
-                .then(imageUrl => {
-                    setGeneratedMedia(prev => ({ ...prev, [slotId]: { url: imageUrl, status: 'complete' } }));
-                    setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'complete', message: 'Image generated!' } }));
-                })
-                .catch(err => {
-                    console.error(err);
-                    setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'error', message: err instanceof Error ? err.message : String(err) } }));
-                });
-        }
-        
-        // Generate the first video
-        if (hasVideoStep && videoSlot) {
-            const slotId = videoSlot.slot_id;
-            const progressCallback = (message: string) => {
-                 setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'loading', message } }));
-            };
-
-            generateVideoFromStoryboard(videoSlot.video_storyboard, progressCallback)
-                .then(videoUrl => {
-                    setGeneratedMedia(prev => ({ ...prev, [slotId]: { url: videoUrl, status: 'complete' } }));
-                    setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'complete', message: 'Video ready!' } }));
-                })
-                .catch(err => {
-                    console.error(err);
-                    setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'error', message: err instanceof Error ? err.message : String(err) } }));
-                });
-        }
-      }
-
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       setError(`Failed to generate campaign plan. ${errorMessage} Please check the brief format and your API key.`);
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -114,6 +68,48 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleGenerateMediaForSlot = useCallback(async (slotId: string) => {
+    if (!campaignPlan) return;
+
+    const slot = campaignPlan.content_calendar.find(s => s.slot_id === slotId);
+    if (!slot) {
+        console.error("Slot not found:", slotId);
+        setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'error', message: 'Content slot definition not found.' } }));
+        return;
+    }
+
+    const needsImage = slot.visual_prompt && slot.visual_prompt.length > 0;
+    const needsVideo = slot.video_storyboard && slot.video_storyboard.length > 0;
+
+    if (needsImage) {
+        setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'loading', message: 'Generating image with Imagen...' } }));
+        try {
+            const imageUrl = await generateImageFromPrompt(slot.visual_prompt);
+            setGeneratedMedia(prev => ({ ...prev, [slotId]: { url: imageUrl, status: 'complete' } }));
+            setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'complete', message: 'Image generated!' } }));
+        } catch (err) {
+            console.error(err);
+            setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'error', message: err instanceof Error ? err.message : String(err) } }));
+        }
+    } else if (needsVideo) {
+         const progressCallback = (message: string) => {
+             setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'loading', message } }));
+        };
+        progressCallback('Initializing video generation...');
+        try {
+            const videoUrl = await generateVideoFromStoryboard(slot.video_storyboard, progressCallback);
+            setGeneratedMedia(prev => ({ ...prev, [slotId]: { url: videoUrl, status: 'complete' } }));
+            setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'complete', message: 'Video ready!' } }));
+        } catch (err) {
+            console.error(err);
+            setMediaGenerationStatus(prev => ({ ...prev, [slotId]: { status: 'error', message: err instanceof Error ? err.message : String(err) } }));
+        }
+    } else {
+        console.warn("Slot has no media prompt:", slotId);
+    }
+  }, [campaignPlan]);
+
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 font-sans">
       <Header />
@@ -137,6 +133,7 @@ const App: React.FC = () => {
               logoError={logoError}
               generatedMedia={generatedMedia}
               mediaGenerationStatus={mediaGenerationStatus}
+              onGenerateMediaForSlot={handleGenerateMediaForSlot}
             />
           </div>
         </div>

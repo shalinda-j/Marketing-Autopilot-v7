@@ -250,3 +250,152 @@ export const generateVideoFromStoryboard = async (storyboard: string[], onProgre
         throw new Error(`Failed to generate video from AI. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
     }
 };
+
+export const getImageDescription = async (base64ImageDataUri: string, prompt: string): Promise<string> => {
+    try {
+        const { mimeType, data: base64ImageData } = parseDataUri(base64ImageDataUri);
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    {
+                        inlineData: {
+                            data: base64ImageData,
+                            mimeType: mimeType,
+                        },
+                    },
+                    {
+                        text: prompt,
+                    },
+                ],
+            }
+        });
+
+        const text = response.text;
+        if (!text) {
+             throw new Error("The model returned no description for the image.");
+        }
+        return text;
+    } catch (error) {
+        console.error("Error getting image description:", error);
+        throw new Error(`Failed to describe image. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+    }
+};
+
+export const generateProductVideo = async (
+    productImageUri: string, 
+    characterImageUri: string, 
+    script: string, 
+    onProgress?: (message: string) => void
+): Promise<string> => {
+    try {
+        onProgress?.("Analyzing character image...");
+        const characterDescription = await getImageDescription(characterImageUri, "Describe the person in this image concisely for a video generation prompt. Focus on appearance, clothing, and expression.");
+        onProgress?.(`Character identified. Including in prompt...`);
+
+        const fullPrompt = `${script}. This video should prominently feature the product shown in the input image. Also, include a person who looks like this: ${characterDescription}. The video should have a voice-over narrating the script.`;
+        
+        onProgress?.("Starting video generation with Veo 2...");
+        const { mimeType, data: productImageData } = parseDataUri(productImageUri);
+
+        let operation = await ai.models.generateVideos({
+            model: 'veo-2.0-generate-001',
+            prompt: fullPrompt,
+            image: {
+                imageBytes: productImageData,
+                mimeType: mimeType,
+            },
+            config: {
+                numberOfVideos: 1
+            }
+        });
+        
+        onProgress?.("Video processing has begun. This may take a few minutes...");
+
+        while (!operation.done) {
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            onProgress?.("Checking video status...");
+            operation = await ai.operations.getVideosOperation({operation: operation});
+        }
+        
+        onProgress?.("Video generation complete! Fetching the file...");
+
+        const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+        if (!downloadLink) {
+            throw new Error("Video generation succeeded, but no download link was provided.");
+        }
+        
+        const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch the video file. Status: ${response.statusText}`);
+        }
+        const videoBlob = await response.blob();
+        const videoUrl = URL.createObjectURL(videoBlob);
+        
+        onProgress?.("Video ready!");
+        return videoUrl;
+
+    } catch (error) {
+        console.error("Error generating product video:", error);
+        throw new Error(`Failed to generate product video. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+    }
+};
+
+export const generateProductImage = async (
+    productImageUri: string, 
+    characterImageUri: string, 
+    prompt: string
+): Promise<string> => {
+    try {
+        const characterDescription = await getImageDescription(characterImageUri, "Describe the person in this image concisely for an image editing prompt. Focus on appearance, clothing, and expression.");
+        const fullPrompt = `${prompt}. Add a person who looks like this into the scene: ${characterDescription}.`;
+        
+        const editedImageUrl = await editImage(productImageUri, fullPrompt);
+        return editedImageUrl;
+    } catch (error) {
+        console.error("Error generating product image:", error);
+        throw new Error(`Failed to generate product image. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+    }
+};
+
+export const generateMarketingImagePrompt = async (
+    productImageUri: string,
+    characterImageUri: string
+): Promise<string> => {
+    try {
+        const { mimeType: productMime, data: productData } = parseDataUri(productImageUri);
+        const { mimeType: characterMime, data: characterData } = parseDataUri(characterImageUri);
+
+        const systemPrompt = `You are an expert creative director for an advertising agency. Your task is to analyze two images—one of a product and one of a character/model—and generate a single, detailed, and compelling prompt for an AI image generator (like Imagen 4).
+
+        The generated prompt must:
+        1.  Combine the character and the product into a cohesive, realistic, and engaging scene.
+        2.  Describe a specific setting, atmosphere, and lighting (e.g., golden hour, studio lighting, neon city).
+        3.  Suggest an action or interaction between the character and the product.
+        4.  Include stylistic keywords that lead to a high-quality, photorealistic, and professional marketing image suitable for social media. Examples: "ultra-realistic", "cinematic", "shot on ARRI Alexa", "depth-of-field", "vibrant colors".
+        5.  Be a single paragraph of text. Do not use lists or markdown.
+
+        Analyze the provided images and generate the prompt.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    { text: systemPrompt },
+                    { inlineData: { mimeType: productMime, data: productData } },
+                    { inlineData: { mimeType: characterMime, data: characterData } },
+                ],
+            }
+        });
+
+        const text = response.text;
+        if (!text) {
+            throw new Error("The model returned no prompt.");
+        }
+        return text.trim();
+    } catch (error) {
+        console.error("Error generating marketing image prompt:", error);
+        throw new Error(`Failed to generate prompt. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
+    }
+};

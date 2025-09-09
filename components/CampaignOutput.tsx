@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { CampaignPlan, ContentSlot } from '../types';
-import { MegaphoneIcon, CalendarIcon, FilmIcon, CodeBracketIcon, PhotographIcon, PaintBrushIcon } from './icons';
+import { MegaphoneIcon, CalendarIcon, FilmIcon, CodeBracketIcon, PhotographIcon, PaintBrushIcon, ChartBarIcon, SparklesIcon, DownloadIcon } from './icons';
 import { Spinner } from './Spinner';
-import { ImageStudioTool } from './ImageStudioTool';
+import { ProductAdStudio } from './ProductAdStudio';
 
 interface CampaignOutputProps {
   plan: CampaignPlan | null;
@@ -12,6 +12,7 @@ interface CampaignOutputProps {
   logoError: string | null;
   generatedMedia: Record<string, { url: string; status: 'complete' }>;
   mediaGenerationStatus: Record<string, { status: 'loading' | 'error' | 'complete'; message: string }>;
+  onGenerateMediaForSlot: (slotId: string) => void;
 }
 
 const ShimmerEffect = () => (
@@ -106,7 +107,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, mediaUrl, status }) => (
               )}
               {!mediaUrl && !status && (
                  <div className="w-full aspect-video bg-gray-900/50 rounded-lg flex items-center justify-center">
-                     <p className="text-sm text-gray-500">Media will be generated here...</p>
+                     <p className="text-sm text-gray-500">Media not yet generated</p>
                  </div>
               )}
             </div>
@@ -114,17 +115,77 @@ const PostCard: React.FC<PostCardProps> = ({ post, mediaUrl, status }) => (
     </div>
 );
 
-const mediaToolInfo: { [key: string]: { icon: React.ReactNode; name: string; description: string; color: string; } } = {
-  'imagen3': { icon: <PhotographIcon className="w-6 h-6" />, name: 'Imagen 4', description: 'Generate Image', color: 'pink-400' },
-  'imagen-4.0-generate-001': { icon: <PhotographIcon className="w-6 h-6" />, name: 'Imagen 4', description: 'Generate Image', color: 'pink-400' },
-  'veo2': { icon: <FilmIcon className="w-6 h-6" />, name: 'Veo 2', description: 'Create Video', color: 'purple-400' },
-  'veo-2.0-generate-001': { icon: <FilmIcon className="w-6 h-6" />, name: 'Veo 2', description: 'Create Video', color: 'purple-400' },
-  'gemini-2.5-flash-image-preview': { icon: <PaintBrushIcon className="w-6 h-6" />, name: 'Nano Banana', description: 'Refine Image', color: 'yellow-400' },
-  'chirp3': { icon: <MegaphoneIcon className="w-6 h-6" />, name: 'Chirp 3', description: 'Generate Voiceover', color: 'teal-400' },
+interface MediaGenerationCardProps {
+    slot: ContentSlot;
+    mediaUrl?: string;
+    status?: { status: 'loading' | 'error' | 'complete'; message: string };
+    onGenerate: (slotId: string) => void;
+}
+
+const MediaGenerationCard: React.FC<MediaGenerationCardProps> = ({ slot, mediaUrl, status, onGenerate }) => {
+    const needsImage = slot.visual_prompt && slot.visual_prompt.length > 0;
+    const needsVideo = slot.video_storyboard && slot.video_storyboard.length > 0;
+    const prompt = needsImage ? slot.visual_prompt : (needsVideo ? slot.video_storyboard.join(' / ') : 'No prompt available.');
+    const mediaType = needsImage ? 'Image' : 'Video';
+
+    const isProcessing = status?.status === 'loading';
+    const isComplete = status?.status === 'complete' && !!mediaUrl;
+
+    const getButtonText = () => {
+        if (isProcessing) return `Generating ${mediaType}...`;
+        if (isComplete) return `Re-generate ${mediaType}`;
+        return `Generate ${mediaType}`;
+    };
+
+    return (
+        <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <span className="text-xs uppercase font-bold text-gray-400">{slot.platform} - {slot.post_type}</span>
+                <h3 className="text-lg font-bold text-white mb-2">Creative Prompt</h3>
+                <div className="bg-gray-900/50 p-3 rounded-lg max-h-40 overflow-y-auto">
+                    <p className="text-gray-300 text-sm italic">"{prompt}"</p>
+                </div>
+                <button
+                    onClick={() => onGenerate(slot.slot_id)}
+                    disabled={isProcessing}
+                    className="w-full mt-4 flex items-center justify-center bg-gradient-to-r from-brand-secondary to-brand-accent text-white font-bold py-3 px-4 rounded-lg hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                >
+                    {isProcessing ? <Spinner /> : <SparklesIcon className="w-5 h-5 mr-2" />}
+                    {getButtonText()}
+                </button>
+            </div>
+            <div className="aspect-video w-full rounded-2xl bg-gray-900/50 border-2 border-dashed border-gray-700 flex items-center justify-center p-2 relative">
+                {isProcessing && (
+                    <div className="relative w-full h-full bg-gray-900 rounded-lg flex flex-col items-center justify-center text-center p-4 overflow-hidden">
+                        <ShimmerEffect />
+                        <Spinner />
+                        <p className="mt-2 text-sm text-gray-300">{status?.message || `Generating ${mediaType}...`}</p>
+                    </div>
+                )}
+                {status?.status === 'error' && !isProcessing && <p className="text-red-400 text-sm text-center p-4">{status.message}</p>}
+                {isComplete && needsVideo && <video src={mediaUrl} controls autoPlay loop muted className="max-w-full max-h-full rounded-lg" />}
+                {isComplete && needsImage && (
+                    <>
+                        <img src={mediaUrl} alt="Generated marketing" className="max-w-full max-h-full rounded-lg object-contain" />
+                        <a 
+                            href={mediaUrl} 
+                            download={`${slot.slot_id}.png`}
+                            className="absolute top-2 right-2 bg-gray-900/70 text-white p-2 rounded-full hover:bg-gray-800 transition-colors"
+                            aria-label="Download Image"
+                            title="Download Image"
+                        >
+                            <DownloadIcon className="w-5 h-5" />
+                        </a>
+                    </>
+                )}
+                {!isComplete && !isProcessing && status?.status !== 'error' && <p className="text-sm text-gray-500 text-center">Your {mediaType.toLowerCase()} will appear here</p>}
+            </div>
+        </div>
+    );
 };
 
 
-export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading, logoUrl, isLogoLoading, logoError, generatedMedia, mediaGenerationStatus }) => {
+export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading, logoUrl, isLogoLoading, logoError, generatedMedia, mediaGenerationStatus, onGenerateMediaForSlot }) => {
   const [activeTab, setActiveTab] = useState(0);
 
   if (isLoading) {
@@ -179,14 +240,12 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
   }
 
   const TABS = [
-    { label: 'Overview', icon: <MegaphoneIcon className="w-5 h-5" /> },
+    { label: 'Overview', icon: <ChartBarIcon className="w-5 h-5" /> },
     { label: 'Content Calendar', icon: <CalendarIcon className="w-5 h-5" /> },
     { label: 'Media Plan', icon: <FilmIcon className="w-5 h-5" /> },
-    { label: 'Image Studio', icon: <PaintBrushIcon className="w-5 h-5" /> },
+    { label: 'Product Ad Studio', icon: <PaintBrushIcon className="w-5 h-5" /> },
     { label: 'Raw JSON', icon: <CodeBracketIcon className="w-5 h-5" /> },
   ];
-
-  const defaultImagePrompt = plan?.content_calendar?.[0]?.visual_prompt || '';
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-lg min-h-[70vh]">
@@ -232,45 +291,29 @@ export const CampaignOutput: React.FC<CampaignOutputProps> = ({ plan, isLoading,
             </div>
         )}
         {activeTab === 2 && (
-            <div className="animate-fade-in">
-              <div className="flex flex-col items-center">
-                {(plan.media_generation_order || []).map((step, index, arr) => {
-                   const tool = mediaToolInfo[step.tool] || { icon: <CodeBracketIcon className="w-6 h-6" />, name: step.tool, description: 'Custom Step', color: 'gray-400' };
-                   const sourceKey = step.prompt_key || step.storyboard_key || step.script_key;
-
-                   return (
-                     <React.Fragment key={step.step}>
-                       <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-4 w-full max-w-2xl shadow-lg">
-                         <div className="flex items-center space-x-4">
-                            <div className={`p-3 rounded-full bg-gray-900 border-2 border-${tool.color} text-${tool.color}`}>
-                                {tool.icon}
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-400">STEP {step.step}: {tool.description}</p>
-                                <h4 className="text-lg font-bold text-white">{tool.name}</h4>
-                            </div>
-                            <div className="flex-grow text-right">
-                                <span className={`text-xs font-mono px-2 py-1 bg-gray-900 rounded-md text-gray-300`}>{step.mime}</span>
-                            </div>
-                         </div>
-                         <div className="mt-3 pl-16 text-sm">
-                           {sourceKey && <p className="text-gray-400">Source: <code className="text-xs">{sourceKey}</code></p>}
-                           {step.output_size && <p className="text-gray-400">Size: <code className="text-xs">{step.output_size}</code></p>}
-                           {step.duration && <p className="text-gray-400">Duration: <code className="text-xs">{step.duration}</code></p>}
-                         </div>
-                       </div>
-                       
-                       {index < arr.length - 1 && (
-                         <div className="w-1 h-8 bg-gray-700 my-1" />
-                       )}
-                     </React.Fragment>
-                   );
-                })}
-              </div>
+             <div className="animate-fade-in space-y-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-white">Media Generation Hub</h2>
+                    <p className="text-gray-400 mt-1">
+                        Create the visual assets for your campaign posts. Prompts are automatically filled from your content calendar.
+                    </p>
+                </div>
+                {(plan.content_calendar || [])
+                    .filter(slot => (slot.visual_prompt && slot.visual_prompt.length > 0) || (slot.video_storyboard && slot.video_storyboard.length > 0))
+                    .map(slot => (
+                        <MediaGenerationCard
+                            key={slot.slot_id}
+                            slot={slot}
+                            mediaUrl={generatedMedia[slot.slot_id]?.url}
+                            status={mediaGenerationStatus[slot.slot_id]}
+                            onGenerate={onGenerateMediaForSlot}
+                        />
+                    ))
+                }
             </div>
         )}
         {activeTab === 3 && (
-            <ImageStudioTool defaultPrompt={defaultImagePrompt} />
+            <ProductAdStudio />
         )}
         {activeTab === 4 && (
             <pre className="bg-gray-900 p-4 rounded-lg text-xs text-gray-300 overflow-x-auto max-h-[60vh]">
