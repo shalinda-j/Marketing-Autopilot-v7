@@ -12,14 +12,14 @@ export const Header: React.FC = () => {
           </div>
           <h1 className="text-2xl font-bold text-white">MarketingAutopilot v7</h1>
         </div>
-        <a 
+        {/* <a 
           href="https://ai.google.dev/" 
           target="_blank" 
           rel="noopener noreferrer"
           className="text-sm text-gray-400 hover:text-white transition-colors"
         >
           Powered by Google AI
-        </a>
+        </a> */}
       </div>
     </header>
   );
