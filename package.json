@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.1.1",
+    "@google/genai": "^1.17.0",
+    "@types/react-icons": "^2.2.7",
     "react": "^19.1.1",
-    "@google/genai": "^1.17.0"
+    "react-dom": "^19.1.1",
+    "react-icons": "^5.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
