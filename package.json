@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"npm run dev -- --port 3000\" \"wait-on http://localhost:3000 && electron electron.cjs\"",
+    "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {
     "react-dom": "^19.1.1",
@@ -16,6 +19,11 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "electron": "^31.2.1",
+    "electron-builder": "24.13.3",
+    "electron-is-dev": "^3.0.1",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
   }
 }
