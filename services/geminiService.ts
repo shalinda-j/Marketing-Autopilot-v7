@@ -89,7 +89,13 @@ export const generateCampaignPlan = async (brief: string): Promise<CampaignPlan>
 
         const jsonText = text.trim();
         const cleanedJson = jsonText.replace(/^```json\s*|```\s*$/g, '');
-        return JSON.parse(cleanedJson) as CampaignPlan;
+        const parsedJson = JSON.parse(cleanedJson);
+
+        if (parsedJson.error) {
+            throw new Error(parsedJson.error);
+        }
+
+        return parsedJson as CampaignPlan;
 
     } catch (error) {
         console.error("Error generating campaign plan:", error);
