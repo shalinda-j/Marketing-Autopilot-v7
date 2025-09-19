@@ -2,11 +2,27 @@
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { CampaignPlan } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
+// Use a global variable to store the API configuration
+let apiConfig = {
+  apiKey: process.env.API_KEY || process.env.GEMINI_API_KEY || 'your_gemini_api_key_here',
+  endpoint: process.env.GEMINI_ENDPOINT || null
+};
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Function to set custom API configuration
+export const setApiConfig = (apiKey: string, endpoint?: string) => {
+  apiConfig.apiKey = apiKey;
+  apiConfig.endpoint = endpoint || null;
+  // Reinitialize AI with the new configuration
+  reinitializeAI();
+};
+
+// Initialize AI with the current configuration
+let ai = new GoogleGenAI({ apiKey: apiConfig.apiKey });
+
+// Function to reinitialize AI with new configuration
+const reinitializeAI = () => {
+  ai = new GoogleGenAI({ apiKey: apiConfig.apiKey });
+};
 
 const systemPrompt = `You are MarketingAutopilot v7, a Google-Agent that turns a 10-word brief into a full, high-engagement, omni-channel campaign in 1 click.
 
@@ -14,7 +30,7 @@ INPUT FORMAT (single line, separated by '|'):
 BRAND | PRODUCT | CAMPAIGN THEME | TARGET PERSONA | PRIMARY KPI | BUDGET TIER (micro/smb/enterprise) | START DATE | END DATE | BRAND TOV (emoji allowed) | HASHTAG SEED | UTM_CAMPAIGN | OPTIMAL POST COUNT PER CHANNEL
 
 EXAMPLE INPUT:
-Coca-Cola | Coke Zero Sugar | “Summer Vibes, Zero Limits” | Gen-Z festival goers 18-24 | Engagement rate | enterprise | 2025-06-01 | 2025-08-31 | playful, emoji-heavy, inclusive | #ZeroLimitsSummer | coke_zero_summer_25 | 3/wk IG-TK, 2/wk YT-SC, 1/wk TW-LI
+Coca-Cola | Coke Zero Sugar | "Summer Vibes, Zero Limits" | Gen-Z festival goers 18-24 | Engagement rate | enterprise | 2025-06-01 | 2025-08-31 | playful, emoji-heavy, inclusive | #ZeroLimitsSummer | coke_zero_summer_25 | 3/wk IG-TK, 2/wk YT-SC, 1/wk TW-LI
 
 OUTPUT FORMAT (valid JSON only, no commentary):
 {
@@ -69,6 +85,16 @@ OUTPUT FORMAT (valid JSON only, no commentary):
 
 export const generateCampaignPlan = async (brief: string): Promise<CampaignPlan> => {
     try {
+        // Reinitialize AI if needed
+        if (!apiConfig.apiKey || apiConfig.apiKey === 'your_gemini_api_key_here') {
+            throw new Error("API_KEY environment variable not set");
+        }
+        
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const fullPrompt = `${systemPrompt}\n\nProcess this input:\n${brief}`;
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
@@ -110,6 +136,11 @@ const parseDataUri = (dataUri: string): { mimeType: string; data: string } => {
 
 export const editImage = async (base64ImageDataUri: string, prompt: string): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const { mimeType, data: base64ImageData } = parseDataUri(base64ImageDataUri);
 
         const response = await ai.models.generateContent({
@@ -159,6 +190,11 @@ export const editImage = async (base64ImageDataUri: string, prompt: string): Pro
 
 export const generateImageFromPrompt = async (prompt: string): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const response = await ai.models.generateImages({
             model: 'imagen-4.0-generate-001',
             prompt: prompt,
@@ -184,6 +220,11 @@ export const generateImageFromPrompt = async (prompt: string): Promise<string> =
 
 export const generateVideoFromStoryboard = async (storyboard: string[], onProgress?: (message: string) => void): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const prompt = "Create a short, dynamic, and engaging marketing video based on this storyboard: " + storyboard.join('. ');
         onProgress?.("Starting video generation with Veo 2...");
 
@@ -210,7 +251,7 @@ export const generateVideoFromStoryboard = async (storyboard: string[], onProgre
             throw new Error("Video generation succeeded, but no download link was provided.");
         }
         
-        const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        const response = await fetch(`${downloadLink}&key=${apiConfig.apiKey}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch the video file. Status: ${response.statusText}`);
         }
@@ -228,6 +269,11 @@ export const generateVideoFromStoryboard = async (storyboard: string[], onProgre
 
 export const getImageDescription = async (base64ImageDataUri: string, prompt: string): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const { mimeType, data: base64ImageData } = parseDataUri(base64ImageDataUri);
         
         const response = await ai.models.generateContent({
@@ -265,6 +311,11 @@ export const generateProductVideo = async (
     onProgress?: (message: string) => void
 ): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         onProgress?.("Analyzing character image...");
         const characterDescription = await getImageDescription(characterImageUri, "Describe the person in this image concisely for a video generation prompt. Focus on appearance, clothing, and expression.");
         onProgress?.(`Character identified. Including in prompt...`);
@@ -301,7 +352,7 @@ export const generateProductVideo = async (
             throw new Error("Video generation succeeded, but no download link was provided.");
         }
         
-        const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        const response = await fetch(`${downloadLink}&key=${apiConfig.apiKey}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch the video file. Status: ${response.statusText}`);
         }
@@ -323,6 +374,11 @@ export const generateProductImage = async (
     prompt: string
 ): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const characterDescription = await getImageDescription(characterImageUri, "Describe the person in this image concisely for an image editing prompt. Focus on appearance, clothing, and expression.");
         const fullPrompt = `${prompt}. Add a person who looks like this into the scene: ${characterDescription}.`;
         
@@ -339,6 +395,11 @@ export const generateMarketingImagePrompt = async (
     characterImageUri: string
 ): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const { mimeType: productMime, data: productData } = parseDataUri(productImageUri);
         const { mimeType: characterMime, data: characterData } = parseDataUri(characterImageUri);
 
@@ -380,6 +441,11 @@ export const generateMarketingVideoScript = async (
     characterImageUri: string
 ): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const { mimeType: productMime, data: productData } = parseDataUri(productImageUri);
         const { mimeType: characterMime, data: characterData } = parseDataUri(characterImageUri);
 
@@ -419,6 +485,11 @@ export const generateMarketingVideoScript = async (
 
 export const generateEpisodePrompts = async (seriesIdea: string, numEpisodes: number): Promise<{ title: string; prompt: string }[]> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const systemInstruction = `You are an expert scriptwriter and creative director for a production studio. Your task is to take a high-level series idea and generate a plan for a series of short, engaging video episodes.
 
 For each episode, you must provide:
@@ -475,6 +546,11 @@ export const generateEpisodicVideo = async (prompt: string, onProgress?: (messag
     // Note: The Veo API via this SDK does not currently support specifying output resolution.
     // The quality parameter from the UI is noted, but the API will generate at its default high quality.
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         onProgress?.("Starting video generation...");
 
         let operation = await ai.models.generateVideos({
@@ -500,7 +576,7 @@ export const generateEpisodicVideo = async (prompt: string, onProgress?: (messag
             throw new Error("Video generation succeeded, but the download link is missing.");
         }
         
-        const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        const response = await fetch(`${downloadLink}&key=${apiConfig.apiKey}`);
         if (!response.ok) {
             throw new Error(`Failed to download the final video file. Status: ${response.statusText}`);
         }
@@ -518,6 +594,11 @@ export const generateEpisodicVideo = async (prompt: string, onProgress?: (messag
 
 export const generateBriefFromUrl = async (url: string): Promise<string> => {
     try {
+        // Ensure we're using the latest AI instance
+        if (!ai) {
+            reinitializeAI();
+        }
+        
         const systemInstruction = `You are a marketing analyst. Based on the following website URL, create a one-line campaign brief.
 You must strictly follow this format:
 BRAND | PRODUCT | CAMPAIGN THEME | TARGET PERSONA | PRIMARY KPI | BUDGET TIER (micro/smb/enterprise) | START DATE (next month) | END DATE (3 months from start) | BRAND TOV (emoji allowed) | HASHTAG SEED | UTM_CAMPAIGN | OPTIMAL POST COUNT PER CHANNEL

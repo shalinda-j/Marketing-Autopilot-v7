@@ -2,14 +2,35 @@
   "appId": "com.example.marketingautopilot",
   "productName": "Marketing Autopilot",
   "directories": {
-    "output": "dist_electron"
+    "output": "dist_electron",
+    "buildResources": "build"
   },
   "files": [
     "dist/**/*",
     "electron.cjs"
   ],
   "win": {
-    "target": "nsis"
+    "icon": "build/icon.ico",
+    "artifactName": "${productName}-Setup-${version}.${ext}",
+    "publisherName": "Marketing Autopilot",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Marketing Autopilot",
+    "perMachine": false,
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico",
+    "installerHeaderIcon": "build/icon.ico",
+    "deleteAppDataOnUninstall": true
   },
   "mac": {
     "target": "dmg"

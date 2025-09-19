@@ -9,21 +9,25 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev -- --port 3000\" \"wait-on http://localhost:3000 && electron electron.cjs\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder",
+    "icon-build": "electron-icon-builder --input=./build/icon.svg --output=./build"
   },
   "dependencies": {
-    "react-dom": "^19.1.1",
+    "@google/genai": "^1.17.0",
     "react": "^19.1.1",
-    "@google/genai": "^1.17.0"
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0",
+    "concurrently": "^8.2.2",
     "electron": "^31.2.1",
     "electron-builder": "24.13.3",
+    "electron-icon-builder": "^2.0.1",
+    "electron-icon-maker": "^0.0.5",
     "electron-is-dev": "^3.0.1",
-    "concurrently": "^8.2.2",
+    "to-ico": "^1.1.5",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
     "wait-on": "^7.2.0"
   }
 }

@@ -1,11 +1,11 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { CampaignInput } from './components/CampaignInput';
 import { CampaignOutput } from './components/CampaignOutput';
 import { CampaignPlan } from './types';
-import { generateCampaignPlan, generateImageFromPrompt, generateVideoFromStoryboard, generateBriefFromUrl } from './services/geminiService';
+import { generateCampaignPlan, generateImageFromPrompt, generateVideoFromStoryboard, generateBriefFromUrl, setApiConfig } from './services/geminiService';
 import { EpisodicVideoStudio } from './components/EpisodicVideoStudio';
+import ApiConfigPanel from './components/ApiConfigPanel';
 
 const App: React.FC = () => {
   const [campaignPlan, setCampaignPlan] = useState<CampaignPlan | null>(null);
@@ -13,10 +13,25 @@ const App: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'campaign' | 'episodic'>('campaign');
+  const [apiKey, setApiKey] = useState<string>('');
 
   const [generatedMedia, setGeneratedMedia] = useState<Record<string, { url: string; status: 'complete' }>>({});
   const [mediaGenerationStatus, setMediaGenerationStatus] = useState<Record<string, { status: 'loading' | 'error' | 'complete'; message: string }>>({});
 
+  // Load API key from localStorage on app start
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('geminiApiKey') || '';
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setApiConfig(savedApiKey);
+    }
+  }, []);
+
+  const handleApiKeyChange = (newApiKey: string) => {
+    setApiKey(newApiKey);
+    localStorage.setItem('geminiApiKey', newApiKey);
+    setApiConfig(newApiKey);
+  };
 
   const handleGenerateCampaign = useCallback(async (brief: string) => {
     setError(null);
@@ -118,6 +133,10 @@ const App: React.FC = () => {
       <main className="p-4 sm:p-6 lg:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-screen-2xl mx-auto">
           <div className="lg:col-span-4">
+            <ApiConfigPanel 
+              onApiKeyChange={handleApiKeyChange}
+              currentApiKey={apiKey}
+            />
             <CampaignInput 
               onGenerateFromBrief={handleGenerateFromBrief}
               onGenerateFromUrl={handleGenerateFromUrl}

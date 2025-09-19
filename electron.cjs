@@ -14,14 +14,12 @@ async function main() {
       },
     });
 
-    win.loadURL(
-      isDev
-        ? 'http://localhost:3000'
-        : `file://${path.join(__dirname, 'dist/index.html')}`
-    );
-
     if (isDev) {
+      win.loadURL('http://localhost:3000');
       win.webContents.openDevTools();
+    } else {
+      // Fixed path to the built HTML file
+      win.loadFile(path.join(__dirname, 'dist', 'index.html'));
     }
   }
 
