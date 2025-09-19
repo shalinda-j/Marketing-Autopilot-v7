@@ -1,0 +1,20 @@
+{
+  "appId": "com.example.marketingautopilot",
+  "productName": "Marketing Autopilot",
+  "directories": {
+    "output": "dist_electron"
+  },
+  "files": [
+    "dist/**/*",
+    "electron.cjs"
+  ],
+  "win": {
+    "target": "nsis"
+  },
+  "mac": {
+    "target": "dmg"
+  },
+  "linux": {
+    "target": "AppImage"
+  }
+}
