@@ -10,16 +10,8 @@ export const Header: React.FC = () => {
           <div className="bg-gradient-to-r from-brand-secondary to-brand-accent p-2 rounded-lg">
             <CubeTransparentIcon className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">MarketingAutopilot v7</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Marketing Autopilot</h1>
         </div>
-        {/* <a 
-          href="https://ai.google.dev/" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-sm text-gray-400 hover:text-white transition-colors"
-        >
-          Powered by Google AI
-        </a> */}
       </div>
     </header>
   );
