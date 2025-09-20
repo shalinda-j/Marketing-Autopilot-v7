@@ -2,6 +2,8 @@
   "name": "marketing-autopilot",
   "private": true,
   "version": "0.0.0",
+  "description": "Marketing Autopilot Application",
+  "author": "Gemini",
   "type": "module",
   "main": "electron.cjs",
   "scripts": {
